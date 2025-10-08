@@ -1,6 +1,3 @@
-#Frame processing - Only every fps frames (e.g., every 25th frame if fps = 25)
-#this code processes every nth frame based on the video's fps to reduce computational load and achieve a processing rate of 1 frame per second.
-#location : E:\Internship-Works\obj_detect_confidence\yolo_obj_cls_confid_name.py
 import cv2
 import random
 from ultralytics import YOLO
@@ -31,7 +28,7 @@ if not cap.isOpened():
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = cap.get(cv2.CAP_PROP_FPS)
-out = cv2.VideoWriter("output_tracked.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+out = cv2.VideoWriter("out/output_tracked.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
 frame_count = 0
 count = 0
