@@ -21,7 +21,7 @@ tracker = DeepSort(max_age=30)
 class_names = model.names  # COCO class names dictionary
 
 # Video input/output
-video_path = r"E:\Internship-Works\OOI\Video_Dataset\myvideo_padded.mp4"
+video_path = r"Video_Dataset/myvideo_padded.mp4"
 cap = cv2.VideoCapture(video_path)
 
 if not cap.isOpened():
