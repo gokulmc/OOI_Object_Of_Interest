@@ -1,0 +1,83 @@
+#Frame processing - Only every fps frames (e.g., every 25th frame if fps = 25)
+#this code processes every nth frame based on the video's fps to reduce computational load and achieve a processing rate of 1 frame per second.
+#location : E:\Internship-Works\obj_detect_confidence\yolo_obj_cls_confid_name.py
+import cv2
+import random
+from ultralytics import YOLO
+from deep_sort_realtime.deepsort_tracker import DeepSort
+import warnings
+
+# Suppress pkg_resources warning
+warnings.filterwarnings("ignore", category=UserWarning, message="pkg_resources is deprecated")
+
+# Helper: deterministic color for each track ID
+def color_for_id(track_id):
+    rng = random.Random(int(track_id))
+    return (rng.randint(30, 230), rng.randint(30, 230), rng.randint(30, 230))
+
+# Load YOLO + DeepSORT
+model = YOLO("yolov8n.pt")  # pretrained on COCO
+tracker = DeepSort(max_age=30)
+class_names = model.names  # COCO class names dictionary
+
+# Video input/output
+video_path = r"E:\Internship-Works\OOI\Video_Dataset\myvideo_padded.mp4"
+cap = cv2.VideoCapture(video_path)
+
+if not cap.isOpened():
+    print(f"Error: Cannot open video {video_path}")
+    exit()
+
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = cap.get(cv2.CAP_PROP_FPS)
+out = cv2.VideoWriter("output_tracked.mp4", cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+
+frame_count = 0
+count = 0
+obj_count = {}
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("End of video or cannot read frame.")
+        break
+
+    frame_count += 1
+    if frame_count % int(fps) != 0:
+        continue
+
+    count += 1
+    results = model.predict(frame, verbose=False)[0]
+
+    # Prepare detections
+    detections = []
+    for box, score, cls in zip(results.boxes.xyxy, results.boxes.conf, results.boxes.cls):
+        x1, y1, x2, y2 = map(int, box)
+        conf = float(score) if score is not None else 0.0
+        detections.append(([x1, y1, x2, y2], conf, int(cls)))
+
+    print(f"Frame {frame_count} (processed frame count {count}): {len(detections)} detections")
+
+    # Update DeepSORT
+    tracks = tracker.update_tracks(detections, frame=frame)
+
+    for track in tracks:
+        if not track.is_confirmed():
+            continue
+
+        track_id = track.track_id
+        l, t, r, b = map(int, track.to_ltrb())
+        color = color_for_id(track_id)
+
+        class_name = class_names.get(cls, "Unknown")
+        label = f"ID:{track_id} {class_name} {conf:.2f}"
+
+        cv2.rectangle(frame, (l, t), (r, b), color, 2)
+        cv2.putText(frame, label, (l, t - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+    out.write(frame)
+
+cap.release()
+out.release()
+cv2.destroyAllWindows()
+print("Tracking finished. Output saved as output_tracked.mp4")
